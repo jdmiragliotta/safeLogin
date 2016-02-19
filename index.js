@@ -2,17 +2,18 @@
 // Inports all packages
 var express           = require('express');
 var expressHandlebars = require('express-handlebars');
-var bodyParsers       = require('body-parser');
+var bodyParser       = require('body-parser');
 var session           = require('express-session');
-var sequelize         = require('sequelize');
+var Sequelize         = require('sequelize');
 var sha256            = require('sha256');
+var mysql             =require('mysql');
 var app               = express();
 
 // Established PORT
 var PORT = process.env.PORT || 8080;
 
 // Connects to database
-var Sequelize = new Sequelize('user_db', 'root');
+var sequelize = new Sequelize('user_db', 'root');
 
 // bodyParser to read info from HTML
 app.use(bodyParser.urlencoded({extended: false}));
@@ -32,9 +33,9 @@ var User = sequelize.define('User',{
     }
   },
   password:{
-    type:Sequelize.STRING
+    type:Sequelize.STRING,
   }
-}),
+});
 
 // Creates a Secret for user login
 app.use(session({
@@ -52,21 +53,21 @@ app.get('/', function(req, res){
 });
 
 //takes user to login page if login in button is clicked
-app.get('/', function(req, res){
+app.get('/login', function(req, res){
   res.render('login'); //show login.handlebars
 });
 
 // Post information from form to register the user and enter isnt the database - this must match method=POST and action=/register in form
 app.post('/register', function(req,res){
-  var username = req.body.user; //get the username from the username in the registration form
+  var username = req.body.username; //get the username from the username in the registration form
   if(req.body.password.length > 7){ //checking to see if password is longer than 8 characters
-    var password = sha265('noonelikesawhileloop' + req.body.password); // adds sha256 in front of the enter password to make it more sercure
+    var password = sha256('noonelikesawhileloop' + req.body.password); // adds sha256 in front of the enter password to make it more sercure
     User.create({username: username, password: password}).then(function(user){ //creates new user and password in DB according to user input
       req.session.authenticated = user; // Authenticates a approved user
-      res.redirect('/?msg='+'You\ve Logged In'); // sends user message that they have successfully logged in after registering
+      res.redirect('/success'); // sends user message that they have successfully logged in after registering
    }).catch(function(err){ // throws error message if user made an error
       console.log(err);
-      res.redirct('/?msg='+ err.message);
+      res.redirct('/fail');
    });
   }else{
     res.render('fail'); // sends user to fail page
@@ -75,7 +76,7 @@ app.post('/register', function(req,res){
 
 app.post('/login', function(req, res){
   var username = req.body.username; //get the username from the username in the login form to verify username
-  var password = sha265('noonelikesawhileloop' + req.body.password); // adds sha256 in front of the password in the login fomr to verify password
+  var password = sha256('noonelikesawhileloop' + req.body.password); // adds sha256 in front of the password in the login fomr to verify password
 
   User.findOne({ //access the User table in the DB to find a User where the username = the entered username and the password = the entered password
     where:{
@@ -85,9 +86,9 @@ app.post('/login', function(req, res){
   }).then(function(user){
     if(user){ // if the user is a valid user, send the login successful message
       req.session.authenticated = user;
-      res.redirct('/msg=Login successful');
+      res.redirct('/success');
     }else { // if the user is not a valid user, send the login failed message
-      res.redirect('/msg=Login Failed');
+      res.redirect('/fail');
     }
   }).catch(function(err){
     throw err;
