@@ -51,16 +51,16 @@ app.get('/', function(req, res){
   res.render('register'); //show register.handlebars
 });
 
-//takes user to login page if login in button is  clicked
+//takes user to login page if login in button is clicked
 app.get('/', function(req, res){
   res.render('login'); //show login.handlebars
 });
 
-// Post information from form to register the user and enter isnt the database
+// Post information from form to register the user and enter isnt the database - this must match method=POST and action=/register in form
 app.post('/register', function(req,res){
-  var username = req.body.user; //get the username from the username in the form
+  var username = req.body.user; //get the username from the username in the registration form
   if(req.body.password.length > 7){ //checking to see if password is longer than 8 characters
-    var password = sha265('noonelikesawhileloop' + req.body.password); // adds sha256 in front of password to make it more sercure
+    var password = sha265('noonelikesawhileloop' + req.body.password); // adds sha256 in front of the enter password to make it more sercure
     User.create({username: username, password: password}).then(function(user){ //creates new user and password in DB according to user input
       req.session.authenticated = user; // Authenticates a approved user
       res.redirect('/?msg='+'You\ve Logged In'); // sends user message that they have successfully logged in after registering
@@ -71,4 +71,44 @@ app.post('/register', function(req,res){
   }else{
     res.render('fail'); // sends user to fail page
   }
+});
+
+app.post('/login', function(req, res){
+  var username = req.body.username; //get the username from the username in the login form to verify username
+  var password = sha265('noonelikesawhileloop' + req.body.password); // adds sha256 in front of the password in the login fomr to verify password
+
+  User.findOne({ //access the User table in the DB to find a User where the username = the entered username and the password = the entered password
+    where:{
+      username: username,
+      password: password
+    }
+  }).then(function(user){
+    if(user){ // if the user is a valid user, send the login successful message
+      req.session.authenticated = user;
+      res.redirct('/msg=Login successful');
+    }else { // if the user is not a valid user, send the login failed message
+      res.redirect('/msg=Login Failed');
+    }
+  }).catch(function(err){
+    throw err;
+  });
+});
+
+app.get('/success', function(req,res){
+  if(req.session.authenticated){
+    res.render('success');
+  }else{
+    res.render('fail');
+  }
+});
+
+app.get('/logout', function(req,res){
+  req.session.authenticated = false;
+  res.redirect('/');
+});
+
+sequelize.sync().then(function(){
+  app.listen(PORT, function(){
+    console.log("Boom");
+  });
 });
